@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../features/ride_management/screens/customer_home_screen.dart';
-import '../../features/ride_management/screens/trips_history_screen.dart';
-import '../../features/safety_tracking/screens/safety_screen.dart';
-import '../../features/profile/screens/profile_screen.dart';
-import '../theme/app_colors.dart';
+import 'booking/customer_home_screen.dart';
+import 'history/trips_history_screen.dart';
+import '../core/widgets/safety_screen.dart';
+import 'profile/profile_screen.dart';
+import '../core/theme/app_colors.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});

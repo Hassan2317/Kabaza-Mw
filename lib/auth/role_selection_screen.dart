@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/main_navigation_screen.dart';
+import '../core/theme/app_colors.dart';
+import '../app_customer/customer_main_navigation_screen.dart';
 import 'driver_registration_screen.dart';
 
 class RoleSelectionScreen extends StatelessWidget {

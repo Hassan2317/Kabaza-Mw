@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../features/safety_tracking/screens/safety_screen.dart';
-import '../../features/profile/screens/profile_screen.dart';
-import '../theme/app_colors.dart';
+import '../core/widgets/safety_screen.dart';
+import 'profile/profile_screen.dart';
+import '../core/theme/app_colors.dart';
 
 class DriverMainNavigationScreen extends StatefulWidget {
   const DriverMainNavigationScreen({super.key});

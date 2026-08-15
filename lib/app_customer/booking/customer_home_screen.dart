@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'ride_booking_provider.dart';
+import '../../core/theme/app_colors.dart';
 
-class CustomerHomeScreen extends StatefulWidget {
+class CustomerHomeScreen extends ConsumerStatefulWidget {
   const CustomerHomeScreen({super.key});
 
   @override
-  State<CustomerHomeScreen> createState() => _CustomerHomeScreenState();
+  ConsumerState<CustomerHomeScreen> createState() => _CustomerHomeScreenState();
 }
 
-class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
-  bool _isBooking = false;
-
+class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
   @override
   Widget build(BuildContext context) {
+    final bookingState = ref.watch(rideBookingProvider);
+    final isBooking = bookingState.isBooking;
+
     return Stack(
       children: [
         // 1. Mock Map Background
@@ -59,7 +62,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           bottom: 0,
           left: 0,
           right: 0,
-          child: _isBooking ? _buildFareEstimateCard() : _buildWhereToCard(),
+          child: isBooking ? _buildFareEstimateCard(bookingState) : _buildWhereToCard(),
         ),
       ],
     );
@@ -88,7 +91,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           // Search Bar Mock
           InkWell(
             onTap: () {
-              setState(() => _isBooking = true);
+              ref.read(rideBookingProvider.notifier).initiateBooking('Custom Destination');
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -119,7 +122,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     );
   }
 
-  Widget _buildFareEstimateCard() {
+  Widget _buildFareEstimateCard(RideBookingState state) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -144,7 +147,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               IconButton(
                 icon: const Icon(Icons.close, color: AppColors.textSecondary),
                 onPressed: () {
-                  setState(() => _isBooking = false);
+                  ref.read(rideBookingProvider.notifier).cancelBooking();
                 },
               )
             ],
@@ -157,20 +160,20 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               borderRadius: BorderRadius.circular(16),
               color: AppColors.primary.withOpacity(0.05),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.two_wheeler, size: 40, color: AppColors.primary),
-                SizedBox(width: 16),
+                const Icon(Icons.two_wheeler, size: 40, color: AppColors.primary),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Standard Kabaza', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text('4 mins away', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      Text(state.destination ?? 'Destination', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const Text('4 mins approx', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                     ],
                   ),
                 ),
-                Text('MK 1,500', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.secondary)),
+                Text('MK ${state.estimatedFare}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.secondary)),
               ],
             ),
           ),
@@ -213,7 +216,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
       subtitle: Text(subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
       onTap: () {
-        setState(() => _isBooking = true);
+        ref.read(rideBookingProvider.notifier).initiateBooking(title);
       },
     );
   }

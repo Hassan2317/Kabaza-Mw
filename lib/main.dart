@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
-import 'features/auth/screens/role_selection_screen.dart';
+import 'auth/role_selection_screen.dart';
 
 void main() {
-  runApp(const KabazaApp());
+  runApp(const ProviderScope(child: KabazaApp()));
 }
 
 class KabazaApp extends StatelessWidget {
