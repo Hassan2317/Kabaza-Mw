@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
-import 'core/widgets/main_navigation_screen.dart';
+import 'features/auth/screens/role_selection_screen.dart';
 
 void main() {
   runApp(const KabazaApp());
@@ -15,7 +15,7 @@ class KabazaApp extends StatelessWidget {
       title: 'Kabaza - Safe Travel',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const MainNavigationScreen(),
+      home: const RoleSelectionScreen(),
     );
   }
 }

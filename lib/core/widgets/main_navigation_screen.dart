@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../features/ride_management/screens/customer_home_screen.dart';
+import '../../features/ride_management/screens/trips_history_screen.dart';
+import '../../features/safety_tracking/screens/safety_screen.dart';
+import '../../features/profile/screens/profile_screen.dart';
 import '../theme/app_colors.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -12,10 +16,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    const Center(child: Text('Ride Home', style: TextStyle(fontSize: 24))),
-    const Center(child: Text('My Trips', style: TextStyle(fontSize: 24))),
-    const Center(child: Text('Safety / SOS', style: TextStyle(fontSize: 24, color: AppColors.error, fontWeight: FontWeight.bold))),
-    const Center(child: Text('Profile', style: TextStyle(fontSize: 24))),
+    const CustomerHomeScreen(),
+    const TripsHistoryScreen(),
+    const SafetyScreen(),
+    const ProfileScreen(),
   ];
 
   @override
