@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "772717713848",
+    "project_id": "motoconnect-7738f",
+    "storage_bucket": "motoconnect-7738f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:772717713848:android:78121cda4d353380ca974d",
+        "android_client_info": {
+          "package_name": "com.company.motoconnet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCbhYHM30NAT_dnfP43OLg5lTg3W_OyVGs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
