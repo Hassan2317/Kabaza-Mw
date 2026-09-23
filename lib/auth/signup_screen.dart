@@ -133,29 +133,11 @@ class _SignupScreenState extends State<SignupScreen> {
               Center(
                 child: Hero(
                   tag: 'app_logo',
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(32),
-                          child: Image.asset(
-                            'assets/images/logo.png',
-                            height: 140,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Kabaza',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2.0,
-                          ),
-                        ),
-                      ],
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      height: 140,
                     ),
                   ),
                 ),

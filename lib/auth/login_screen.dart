@@ -108,40 +108,33 @@ class _LoginScreenState extends State<LoginScreen> {
               Center(
                 child: Hero(
                   tag: 'app_logo',
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(32),
-                          child: Image.asset(
-                            'assets/images/logo.png',
-                            height: 140,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Kabaza',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2.0,
-                          ),
-                        ),
-                      ],
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      height: 140,
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               Center(
-                child: Text(
-                  'Welcome to Kabaza!',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
+                child: RichText(
+                  text: TextSpan(
+                    text: 'Welcome to ',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    children: const [
+                      TextSpan(
+                        text: 'Kabaza!',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
