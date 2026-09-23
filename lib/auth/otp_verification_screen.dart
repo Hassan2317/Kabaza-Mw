@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../core/theme/app_colors.dart';
+import 'emailjs_service.dart';
 import '../app_customer/customer_main_navigation_screen.dart';
 import 'driver_registration_screen.dart';
 import 'login_screen.dart';
@@ -26,9 +27,32 @@ class OTPVerificationScreen extends StatefulWidget {
 class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   final _otpController = TextEditingController();
   bool _isLoading = false;
+  
+  Timer? _timer;
+  int _secondsRemaining = 120;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _secondsRemaining = 120;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_secondsRemaining > 0) {
+        setState(() {
+          _secondsRemaining--;
+        });
+      } else {
+        _timer?.cancel();
+      }
+    });
+  }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _otpController.dispose();
     super.dispose();
   }
@@ -122,6 +146,54 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     }
   }
 
+  Future<void> _resendCode() async {
+    if (_secondsRemaining > 0) return;
+    setState(() => _isLoading = true);
+    
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception("Not signed in.");
+
+      final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final snapshot = await docRef.get();
+      final data = snapshot.data();
+      final userName = data?['name'] ?? 'User';
+
+      final newOtp = EmailJSService.generateOTP();
+
+      await docRef.update({
+        'otpCode': newOtp,
+      });
+
+      final String? emailError = await EmailJSService.sendOTP(
+        userName: userName,
+        userEmail: widget.email,
+        otpCode: newOtp,
+      );
+
+      if (!mounted) return;
+
+      if (emailError != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to resend: $emailError')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Code resent! Please check your email.')),
+        );
+        setState(() {
+          _startTimer();
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -177,6 +249,38 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text('Verify Code', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+              const SizedBox(height: 24),
+              TextButton(
+                onPressed: _secondsRemaining == 0 && !_isLoading ? _resendCode : null,
+                child: Text(
+                  _secondsRemaining > 0 
+                      ? 'Resend Code in ${_secondsRemaining}s'
+                      : 'Resend Code',
+                  style: TextStyle(
+                    color: _secondsRemaining > 0 ? Colors.grey : AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () async {
+                  await FirebaseAuth.instance.signOut();
+                  if (!context.mounted) return;
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    (route) => false,
+                  );
+                },
+                child: const Text(
+                  'Back to Sign In',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),

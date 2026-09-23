@@ -70,7 +70,7 @@ class _SignupScreenState extends State<SignupScreen> {
       });
 
       // Send OTP via EmailJS
-      final bool emailSent = await EmailJSService.sendOTP(
+      final String? emailError = await EmailJSService.sendOTP(
         userName: name,
         userEmail: email,
         otpCode: otp,
@@ -78,14 +78,20 @@ class _SignupScreenState extends State<SignupScreen> {
 
       if (!mounted) return;
 
-      if (!emailSent) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Warning: Failed to send OTP email. Check backend.'),
-            backgroundColor: Colors.red,
+      if (emailError != null) {
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Email Error Data'),
+            content: SingleChildScrollView(child: Text(emailError)),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Copy & Close'))
+            ],
           ),
         );
       }
+
+      if (!mounted) return;
 
       Navigator.pushAndRemoveUntil(
         context,

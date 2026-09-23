@@ -17,8 +17,8 @@ class EmailJSService {
 
   /// Sends the OTP via EmailJS API.
   /// Ensure that in your EmailJS Template dashboard, the 'To Email'
-  /// field is set to {{to_email}} so it sends to the correct user.
-  static Future<bool> sendOTP({
+  /// Returns null on success, or an error message on failure
+  static Future<String?> sendOTP({
     required String userName,
     required String userEmail,
     required String otpCode,
@@ -44,14 +44,12 @@ class EmailJSService {
       );
 
       if (response.statusCode == 200) {
-        return true; // Sent successfully
+        return null; // Sent successfully
       } else {
-        print('EmailJS Error: ${response.statusCode} - ${response.body}');
-        return false;
+        return 'EmailJS Error (${response.statusCode}): ${response.body}';
       }
     } catch (e) {
-      print('Failed to send OTP via EmailJS: $e');
-      return false;
+      return 'Request Exception: $e';
     }
   }
 }
