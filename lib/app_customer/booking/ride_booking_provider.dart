@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 
 enum RideStatus { idle, selecting, searching, active }
 
 class RideBookingState {
   final RideStatus status;
-  final String? destination;
+  final String? destinationName;
+  final LatLng? destinationCoords;
   final int estimatedFare;
   final String? driverName;
   final String? motorcycleModel;
@@ -13,7 +15,8 @@ class RideBookingState {
 
   RideBookingState({
     this.status = RideStatus.idle,
-    this.destination,
+    this.destinationName,
+    this.destinationCoords,
     this.estimatedFare = 0,
     this.driverName,
     this.motorcycleModel,
@@ -23,7 +26,8 @@ class RideBookingState {
 
   RideBookingState copyWith({
     RideStatus? status,
-    String? destination,
+    String? destinationName,
+    LatLng? destinationCoords,
     int? estimatedFare,
     String? driverName,
     String? motorcycleModel,
@@ -32,7 +36,8 @@ class RideBookingState {
   }) {
     return RideBookingState(
       status: status ?? this.status,
-      destination: destination ?? this.destination,
+      destinationName: destinationName ?? this.destinationName,
+      destinationCoords: destinationCoords ?? this.destinationCoords,
       estimatedFare: estimatedFare ?? this.estimatedFare,
       driverName: driverName ?? this.driverName,
       motorcycleModel: motorcycleModel ?? this.motorcycleModel,
@@ -45,11 +50,13 @@ class RideBookingState {
 class RideBookingNotifier extends StateNotifier<RideBookingState> {
   RideBookingNotifier() : super(RideBookingState());
 
-  void initiateBooking(String destination) {
-    final mockFare = 1500 + (destination.length * 20);
+  void initiateBooking(String destinationName, LatLng coords) {
+    // Basic mock fare logic based on destination name
+    final mockFare = 1500 + (destinationName.length * 20);
     state = state.copyWith(
       status: RideStatus.selecting,
-      destination: destination,
+      destinationName: destinationName,
+      destinationCoords: coords,
       estimatedFare: mockFare,
     );
   }

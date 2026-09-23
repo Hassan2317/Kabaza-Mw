@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'ride_booking_provider.dart';
+import 'location_search_screen.dart';
 import '../../core/theme/app_colors.dart';
 
 class CustomerHomeScreen extends ConsumerStatefulWidget {
@@ -11,98 +14,119 @@ class CustomerHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
+  // Default coordinates generally placed in Malawi (e.g. Nkhotakota or Lilongwe)
+  final LatLng _defaultLocation = const LatLng(-12.9248, 34.2962);
+  final MapController _mapController = MapController();
+
+  Future<void> _openSearchScreen() async {
+    final result = await Navigator.push<LocationSearchResult>(
+      context,
+      MaterialPageRoute(builder: (context) => const LocationSearchScreen()),
+    );
+
+    if (result != null) {
+      // Initiate booking with the real address and coordinates
+      ref.read(rideBookingProvider.notifier).initiateBooking(result.displayName, result.coordinates);
+      
+      // Move camera to destination with some zoom
+      _mapController.move(result.coordinates, 15.0);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bookingState = ref.watch(rideBookingProvider);
 
-    return Stack(
-      children: [
-        // 1. Mock Map Background
-        _buildMapMockup(bookingState.status),
-        
-        // 2. Safety Shield FAB (Hidden during active ride for space, but usually present)
-        if (bookingState.status != RideStatus.active && bookingState.status != RideStatus.searching)
-          Positioned(
-            top: 20,
-            right: 20,
-            child: FloatingActionButton(
-              mini: true,
-              backgroundColor: AppColors.error,
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Safety tools opened!')));
-              },
-              child: const Icon(Icons.shield, color: Colors.white),
+    return Scaffold(
+      body: Stack(
+        children: [
+          // 1. Real Interactive Map
+          _buildRealMap(bookingState),
+          
+          // 2. Safety Shield (Hidden during active ride for space)
+          if (bookingState.status != RideStatus.active && bookingState.status != RideStatus.searching)
+            Positioned(
+              top: 20,
+              right: 20,
+              child: SafeArea(
+                child: FloatingActionButton(
+                  mini: true,
+                  backgroundColor: AppColors.error,
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Safety tools opened!')));
+                  },
+                  child: const Icon(Icons.shield, color: Colors.white),
+                ),
+              ),
             ),
-          ),
 
-        // 3. Dynamic Bottom Sheet
-        AnimatedPositioned(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: _buildBottomSheet(bookingState),
-        ),
-      ],
+          // 3. Dynamic Bottom Sheet
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: _buildBottomSheet(bookingState),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildMapMockup(RideStatus status) {
-    return Container(
-      color: Colors.grey.shade200, // Usually Google Map widget here
-      child: Stack(
-        children: [
-          // Simulated map grid styling
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _GridPainter(),
-            ),
-          ),
-          // Center Marker
-          if (status == RideStatus.idle || status == RideStatus.selecting)
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                   Icon(Icons.location_on, size: 50, color: status == RideStatus.selecting ? AppColors.success : AppColors.primary),
-                   const SizedBox(height: 8),
-                   Container(
-                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                     decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(20)),
-                     child: Text(status == RideStatus.selecting ? 'Drop-off' : 'Pickup Location', style: const TextStyle(color: Colors.white, fontSize: 12)),
-                   )
-                ],
-              ),
-            ),
-          
-          // Simulated Route Line
-          if (status == RideStatus.selecting || status == RideStatus.active)
-             Center(
-               child: Container(
-                 width: 4,
-                 height: 150,
-                 color: AppColors.primary.withOpacity(0.5),
-               ),
-             ),
-
-          // Driver pins
-          if (status == RideStatus.idle || status == RideStatus.selecting) ...[
-            const Positioned(top: 100, left: 80, child: Icon(Icons.two_wheeler, color: AppColors.primary, size: 36)),
-            const Positioned(top: 250, right: 60, child: Icon(Icons.two_wheeler, color: AppColors.primary, size: 36)),
-            const Positioned(bottom: 350, left: 150, child: Icon(Icons.two_wheeler, color: AppColors.primary, size: 36)),
-          ],
-
-          if (status == RideStatus.active) ...[
-            // Active driver approaching
-            Positioned(
-              bottom: MediaQuery.of(context).size.height * 0.4,
-              left: MediaQuery.of(context).size.width * 0.4,
-              child: const Icon(Icons.two_wheeler, color: AppColors.primary, size: 48),
-            ),
-          ],
-        ],
+  Widget _buildRealMap(RideBookingState state) {
+    return FlutterMap(
+      mapController: _mapController,
+      options: MapOptions(
+        initialCenter: _defaultLocation,
+        initialZoom: 14.0,
       ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.hassan2317.kabaza',
+        ),
+        MarkerLayer(
+          markers: [
+            // Current Location Marker (mocked static)
+            Marker(
+              point: _defaultLocation,
+              width: 50,
+              height: 50,
+              child: const Icon(Icons.location_on, color: AppColors.success, size: 40),
+            ),
+            
+            // Destination Marker (if searching/selecting)
+            if ((state.status == RideStatus.selecting || state.status == RideStatus.active) && state.destinationCoords != null)
+              Marker(
+                point: state.destinationCoords!,
+                width: 50,
+                height: 50,
+                child: const Icon(Icons.location_on, color: AppColors.primary, size: 40),
+              ),
+              
+            // Example Driver rendering
+            if (state.status == RideStatus.active && state.destinationCoords != null)
+               Marker(
+                 point: LatLng(state.destinationCoords!.latitude - 0.002, state.destinationCoords!.longitude - 0.002), // Slightly offset
+                 width: 50,
+                 height: 50,
+                 child: const Icon(Icons.two_wheeler, color: AppColors.secondary, size: 40),
+               )
+          ],
+        ),
+        // Draw polyline if both exist
+        if ((state.status == RideStatus.selecting || state.status == RideStatus.active) && state.destinationCoords != null)
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: [_defaultLocation, state.destinationCoords!],
+                color: AppColors.primary,
+                strokeWidth: 4.0,
+              ),
+            ],
+          ),
+      ],
     );
   }
 
@@ -136,9 +160,7 @@ class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
           const Text('Ready for a ride?', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.secondary)),
           const SizedBox(height: 16),
           InkWell(
-            onTap: () {
-              ref.read(rideBookingProvider.notifier).initiateBooking('University Campus');
-            },
+            onTap: _openSearchScreen,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               decoration: BoxDecoration(
@@ -159,23 +181,23 @@ class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildQuickChip(Icons.home, 'Home'),
-              _buildQuickChip(Icons.work, 'Work'),
-              _buildQuickChip(Icons.school, 'University'),
+              _buildQuickChip(Icons.home, 'Home', const LatLng(-12.9230, 34.2980)),
+              _buildQuickChip(Icons.work, 'Work', const LatLng(-12.9210, 34.2920)),
+              _buildQuickChip(Icons.school, 'University', const LatLng(-12.9300, 34.3000)),
             ],
           ),
-          const SizedBox(height: 16),
-          const Divider(),
-          _buildRecentLocationTile(Icons.history, 'City Mall', 'Lilongwe'),
-          const SizedBox(height: 10),
+          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  Widget _buildQuickChip(IconData icon, String label) {
+  Widget _buildQuickChip(IconData icon, String label, LatLng coords) {
     return GestureDetector(
-      onTap: () => ref.read(rideBookingProvider.notifier).initiateBooking(label),
+      onTap: () {
+        ref.read(rideBookingProvider.notifier).initiateBooking(label, coords);
+        _mapController.move(coords, 14.0);
+      },
       child: Column(
         children: [
           CircleAvatar(
@@ -191,6 +213,9 @@ class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
   }
 
   Widget _buildFareEstimateCard(RideBookingState state) {
+    // Simplify display name if it's too long
+    final displayName = state.destinationName!.split(',').first;
+    
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -210,7 +235,10 @@ class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
               const Text('Ride Details', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.secondary)),
               IconButton(
                 icon: const Icon(Icons.close, color: AppColors.textSecondary),
-                onPressed: () => ref.read(rideBookingProvider.notifier).cancelBooking(),
+                onPressed: () {
+                  ref.read(rideBookingProvider.notifier).cancelBooking();
+                  _mapController.move(_defaultLocation, 14.0);
+                },
               )
             ],
           ),
@@ -230,7 +258,7 @@ class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(state.destination ?? 'Destination', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 4),
                       const Text('Standard Kabaza • 4 mins away', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                     ],
@@ -276,7 +304,10 @@ class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
           const Text('Connecting you to a driver...', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
           const SizedBox(height: 16),
           TextButton(
-            onPressed: () => ref.read(rideBookingProvider.notifier).cancelBooking(),
+            onPressed: () {
+              ref.read(rideBookingProvider.notifier).cancelBooking();
+              _mapController.move(_defaultLocation, 14.0);
+            },
             child: const Text('Cancel Request', style: TextStyle(color: AppColors.error, fontSize: 16)),
           )
         ],
@@ -299,7 +330,7 @@ class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Driver arriving info
-          Center(
+          const Center(
             child: Text('Driver arriving in 2 mins', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)),
           ),
           const SizedBox(height: 20),
@@ -371,7 +402,10 @@ class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
           const SizedBox(height: 16),
           Center(
              child: TextButton(
-                onPressed: () => ref.read(rideBookingProvider.notifier).cancelBooking(),
+                onPressed: () {
+                  ref.read(rideBookingProvider.notifier).cancelBooking();
+                  _mapController.move(_defaultLocation, 14.0);
+                },
                 child: const Text('Cancel Ride', style: TextStyle(color: AppColors.error)),
              ),
           ),
@@ -379,37 +413,4 @@ class _CustomerHomeScreenState extends ConsumerState<CustomerHomeScreen> {
       ),
     );
   }
-
-  Widget _buildRecentLocationTile(IconData icon, String title, String subtitle) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(
-        backgroundColor: Colors.grey.shade100,
-        child: Icon(icon, color: AppColors.secondary),
-      ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-      subtitle: Text(subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-      onTap: () {
-        ref.read(rideBookingProvider.notifier).initiateBooking(title);
-      },
-    );
-  }
-}
-
-class _GridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.grey.shade300
-      ..strokeWidth = 1;
-    for (double i = 0; i < size.width; i += 40) {
-      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
-    }
-    for (double i = 0; i < size.height; i += 40) {
-      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
