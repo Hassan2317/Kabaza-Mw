@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/theme/app_colors.dart';
 import '../app_customer/customer_main_navigation_screen.dart';
 import 'driver_registration_screen.dart';
+import 'otp_verification_screen.dart';
+import 'emailjs_service.dart';
 
 class SignupScreen extends StatefulWidget {
   final bool initialIsDriver;
@@ -54,30 +56,48 @@ class _SignupScreenState extends State<SignupScreen> {
         password: password,
       );
 
+      final otp = EmailJSService.generateOTP();
+
       // Save to Firestore
       await FirebaseFirestore.instance.collection('users').doc(userCred.user!.uid).set({
         'name': name,
         'email': email,
         'role': _isDriver ? 'driver' : 'passenger',
         'status': _isDriver ? 'incomplete' : 'active',
+        'isEmailVerified': false,
+        'otpCode': otp,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
+      // Send OTP via EmailJS
+      final bool emailSent = await EmailJSService.sendOTP(
+        userName: name,
+        userEmail: email,
+        otpCode: otp,
+      );
+
       if (!mounted) return;
 
-      if (_isDriver) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const DriverRegistrationScreen()),
-          (route) => false,
-        );
-      } else {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
-          (route) => false,
+      if (!emailSent) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Warning: Failed to send OTP email. Check backend.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OTPVerificationScreen(
+            email: email,
+            isDriver: _isDriver,
+            isFromSignup: true,
+          ),
+        ),
+        (route) => false,
+      );
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'An error occurred')));
     } finally {

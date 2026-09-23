@@ -7,6 +7,7 @@ import '../app_customer/customer_main_navigation_screen.dart';
 import '../app_driver/driver_main_navigation_screen.dart';
 import 'driver_registration_screen.dart';
 import 'pending_approval_screen.dart';
+import 'otp_verification_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -56,7 +57,23 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final data = userDoc.data()!;
+      final isVerified = data['isEmailVerified'] ?? true; // fallback to true for old users
       final role = data['role'] as String?;
+      
+      if (isVerified == false) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OTPVerificationScreen(
+              email: email, 
+              isDriver: role == 'driver',
+              isFromSignup: false,
+            ),
+          ),
+        );
+        return;
+      }
+
       final status = data['status'] as String?;
 
       if (role == 'driver') {
