@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/theme/app_colors.dart';
 import 'signup_screen.dart';
 import '../app_customer/customer_main_navigation_screen.dart';
@@ -15,52 +16,64 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isDriver = false;
   bool _isPasswordObscured = true;
-  
-  // NOTE: This is a mock variable to test the smart routing.
-  // In production, this will be fetched from Firebase Firestore.
-  final String _mockDriverStatus = 'pending'; // Change to 'incomplete' or 'approved' to test
+  bool _isLoading = false;
 
   @override
   void dispose() {
-    _phoneController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() {
-    if (_isDriver) {
-      // Smart Routing for Driver
-      switch (_mockDriverStatus) {
-        case 'incomplete':
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const DriverRegistrationScreen()),
-          );
-          break;
-        case 'pending':
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const PendingApprovalScreen()),
-          );
-          break;
-        case 'approved':
-        default:
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const DriverMainNavigationScreen()),
-          );
-          break;
-      }
-    } else {
-      // Passenger simply goes to their map
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email, 
+        password: password,
       );
+
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userCred.user!.uid).get();
+
+      if (!mounted) return;
+
+      if (!userDoc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User record not found.')));
+        return;
+      }
+
+      final data = userDoc.data()!;
+      final role = data['role'] as String?;
+      final status = data['status'] as String?;
+
+      if (role == 'driver') {
+        if (status == 'incomplete') {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const DriverRegistrationScreen()));
+        } else if (status == 'pending') {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const PendingApprovalScreen()));
+        } else {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const DriverMainNavigationScreen()));
+        }
+      } else {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainNavigationScreen()));
+      }
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Login failed')));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -106,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 32),
               _buildRoleToggle(),
               const SizedBox(height: 32),
-              _buildPhoneField(),
+              _buildEmailField(),
               const SizedBox(height: 16),
               _buildPasswordField(),
               const SizedBox(height: 12),
@@ -125,8 +138,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: _handleLogin,
-                child: const Text('Login', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                onPressed: _isLoading ? null : _handleLogin,
+                child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Login', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
               const SizedBox(height: 24),
               Row(
@@ -206,15 +221,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildPhoneField() {
+  Widget _buildEmailField() {
     return TextField(
-      controller: _phoneController,
-      keyboardType: TextInputType.phone,
-      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      controller: _emailController,
+      keyboardType: TextInputType.emailAddress,
       decoration: InputDecoration(
-        labelText: 'Phone Number',
-        prefixIcon: const Icon(Icons.phone_android, color: AppColors.primary),
-        prefixText: '+265 ', // Malawi country code
+        labelText: 'Email Address',
+        prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primary),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

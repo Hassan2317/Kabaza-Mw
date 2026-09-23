@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/theme/app_colors.dart';
 import '../app_customer/customer_main_navigation_screen.dart';
 import 'driver_registration_screen.dart';
@@ -14,11 +15,12 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   
   late bool _isDriver;
   bool _isPasswordObscured = true;
+  bool _isLoading = false;
   
   @override
   void initState() {
@@ -29,26 +31,57 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _phoneController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _handleSignup() {
-    if (_isDriver) {
-      // Driver hasn't uploaded docs, so implicitly they are 'incomplete'
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const DriverRegistrationScreen()),
-        (route) => false,
+  Future<void> _handleSignup() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final userCred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email, 
+        password: password,
       );
-    } else {
-      // Passengers bypass document verification
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
-        (route) => false,
-      );
+
+      // Save to Firestore
+      await FirebaseFirestore.instance.collection('users').doc(userCred.user!.uid).set({
+        'name': name,
+        'email': email,
+        'role': _isDriver ? 'driver' : 'passenger',
+        'status': _isDriver ? 'incomplete' : 'active',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      if (_isDriver) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const DriverRegistrationScreen()),
+          (route) => false,
+        );
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
+          (route) => false,
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'An error occurred')));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -104,7 +137,7 @@ class _SignupScreenState extends State<SignupScreen> {
               const SizedBox(height: 32),
               _buildTextField('Full Name', Icons.person_outline, _nameController),
               const SizedBox(height: 16),
-              _buildPhoneField(),
+              _buildEmailField(),
               const SizedBox(height: 16),
               _buildPasswordField(),
               const SizedBox(height: 32),
@@ -115,8 +148,10 @@ class _SignupScreenState extends State<SignupScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: _handleSignup,
-                child: const Text('Sign Up', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                onPressed: _isLoading ? null : _handleSignup,
+                child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Sign Up', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
               const SizedBox(height: 24),
               Row(
@@ -206,15 +241,13 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _buildPhoneField() {
+  Widget _buildEmailField() {
     return TextField(
-      controller: _phoneController,
-      keyboardType: TextInputType.phone,
-      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      controller: _emailController,
+      keyboardType: TextInputType.emailAddress,
       decoration: InputDecoration(
-        labelText: 'Phone Number',
-        prefixIcon: const Icon(Icons.phone_android, color: AppColors.primary),
-        prefixText: '+265 ',
+        labelText: 'Email Address',
+        prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primary),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
