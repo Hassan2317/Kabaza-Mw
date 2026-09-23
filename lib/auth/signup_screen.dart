@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/theme/app_colors.dart';
-import 'role_selection_screen.dart';
+import '../app_customer/customer_main_navigation_screen.dart';
+import 'driver_registration_screen.dart';
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  final bool initialIsDriver;
+  const SignupScreen({super.key, this.initialIsDriver = false});
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
@@ -11,23 +14,42 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  
+  late bool _isDriver;
+  bool _isPasswordObscured = true;
+  
+  @override
+  void initState() {
+    super.initState();
+    _isDriver = widget.initialIsDriver;
+  }
   
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   void _handleSignup() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
-      (route) => false,
-    );
+    if (_isDriver) {
+      // Driver hasn't uploaded docs, so implicitly they are 'incomplete'
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const DriverRegistrationScreen()),
+        (route) => false,
+      );
+    } else {
+      // Passengers bypass document verification
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -77,12 +99,14 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
+              _buildRoleToggle(),
+              const SizedBox(height: 32),
               _buildTextField('Full Name', Icons.person_outline, _nameController),
               const SizedBox(height: 16),
-              _buildTextField('Email Address', Icons.email_outlined, _emailController),
+              _buildPhoneField(),
               const SizedBox(height: 16),
-              _buildTextField('Password', Icons.lock_outline, _passwordController, obscureText: true),
+              _buildPasswordField(),
               const SizedBox(height: 32),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -111,14 +135,113 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
     );
   }
+  
+  Widget _buildRoleToggle() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _isDriver = false),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: !_isDriver ? AppColors.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    'Passenger',
+                    style: TextStyle(
+                      color: !_isDriver ? Colors.white : AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _isDriver = true),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: _isDriver ? AppColors.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    'Driver',
+                    style: TextStyle(
+                      color: _isDriver ? Colors.white : AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  Widget _buildTextField(String label, IconData icon, TextEditingController controller, {bool obscureText = false}) {
+  Widget _buildTextField(String label, IconData icon, TextEditingController controller) {
     return TextField(
       controller: controller,
-      obscureText: obscureText,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppColors.primary),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhoneField() {
+    return TextField(
+      controller: _phoneController,
+      keyboardType: TextInputType.phone,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: InputDecoration(
+        labelText: 'Phone Number',
+        prefixIcon: const Icon(Icons.phone_android, color: AppColors.primary),
+        prefixText: '+265 ',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return TextField(
+      controller: _passwordController,
+      obscureText: _isPasswordObscured,
+      decoration: InputDecoration(
+        labelText: 'Password',
+        prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _isPasswordObscured ? Icons.visibility_off : Icons.visibility,
+            color: AppColors.textSecondary,
+          ),
+          onPressed: () {
+            setState(() {
+              _isPasswordObscured = !_isPasswordObscured;
+            });
+          },
+        ),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

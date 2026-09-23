@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/theme/app_colors.dart';
 import 'signup_screen.dart';
-import 'role_selection_screen.dart';
+import '../app_customer/customer_main_navigation_screen.dart';
+import '../app_driver/driver_main_navigation_screen.dart';
+import 'driver_registration_screen.dart';
+import 'pending_approval_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,21 +15,53 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isDriver = false;
+  bool _isPasswordObscured = true;
   
+  // NOTE: This is a mock variable to test the smart routing.
+  // In production, this will be fetched from Firebase Firestore.
+  final String _mockDriverStatus = 'pending'; // Change to 'incomplete' or 'approved' to test
+
   @override
   void dispose() {
-    _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   void _handleLogin() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
-    );
+    if (_isDriver) {
+      // Smart Routing for Driver
+      switch (_mockDriverStatus) {
+        case 'incomplete':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const DriverRegistrationScreen()),
+          );
+          break;
+        case 'pending':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const PendingApprovalScreen()),
+          );
+          break;
+        case 'approved':
+        default:
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const DriverMainNavigationScreen()),
+          );
+          break;
+      }
+    } else {
+      // Passenger simply goes to their map
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
+      );
+    }
   }
 
   @override
@@ -67,10 +103,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 40),
-              _buildTextField('Email Address', Icons.email_outlined, _emailController),
+              const SizedBox(height: 32),
+              _buildRoleToggle(),
+              const SizedBox(height: 32),
+              _buildPhoneField(),
               const SizedBox(height: 16),
-              _buildTextField('Password', Icons.lock_outline, _passwordController, obscureText: true),
+              _buildPasswordField(),
               const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerRight,
@@ -99,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const SignupScreen()),
+                        MaterialPageRoute(builder: (context) => SignupScreen(initialIsDriver: _isDriver)),
                       );
                     },
                     child: const Text('Sign Up', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
@@ -112,14 +150,98 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+  
+  Widget _buildRoleToggle() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _isDriver = false),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: !_isDriver ? AppColors.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    'Passenger',
+                    style: TextStyle(
+                      color: !_isDriver ? Colors.white : AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _isDriver = true),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: _isDriver ? AppColors.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    'Driver',
+                    style: TextStyle(
+                      color: _isDriver ? Colors.white : AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  Widget _buildTextField(String label, IconData icon, TextEditingController controller, {bool obscureText = false}) {
+  Widget _buildPhoneField() {
     return TextField(
-      controller: controller,
-      obscureText: obscureText,
+      controller: _phoneController,
+      keyboardType: TextInputType.phone,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: AppColors.primary),
+        labelText: 'Phone Number',
+        prefixIcon: const Icon(Icons.phone_android, color: AppColors.primary),
+        prefixText: '+265 ', // Malawi country code
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return TextField(
+      controller: _passwordController,
+      obscureText: _isPasswordObscured,
+      decoration: InputDecoration(
+        labelText: 'Password',
+        prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _isPasswordObscured ? Icons.visibility_off : Icons.visibility,
+            color: AppColors.textSecondary,
+          ),
+          onPressed: () {
+            setState(() {
+              _isPasswordObscured = !_isPasswordObscured;
+            });
+          },
+        ),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
