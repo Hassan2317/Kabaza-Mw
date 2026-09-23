@@ -1,30 +1,32 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
-import 'signup_screen.dart';
 import 'role_selection_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SignupScreen extends StatefulWidget {
+  const SignupScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _SignupScreenState extends State<SignupScreen> {
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() {
-    Navigator.pushReplacement(
+  void _handleSignup() {
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+      (route) => false,
     );
   }
 
@@ -38,7 +40,15 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 60),
+              const SizedBox(height: 20),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              const SizedBox(height: 20),
               Center(
                 child: Text(
                   'Kabaza',
@@ -51,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 8),
               Center(
                 child: Text(
-                  'Welcome Back!',
+                  'Create an Account',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
@@ -61,25 +71,19 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 8),
               Center(
                 child: Text(
-                  'Sign in to your account',
+                  'Join us to get started',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
               ),
               const SizedBox(height: 40),
+              _buildTextField('Full Name', Icons.person_outline, _nameController),
+              const SizedBox(height: 16),
               _buildTextField('Email Address', Icons.email_outlined, _emailController),
               const SizedBox(height: 16),
               _buildTextField('Password', Icons.lock_outline, _passwordController, obscureText: true),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {},
-                  child: const Text('Forgot Password?', style: TextStyle(color: AppColors.primary)),
-                ),
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -87,22 +91,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: _handleLogin,
-                child: const Text('Login', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                onPressed: _handleSignup,
+                child: const Text('Sign Up', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('Don\'t have an account?', style: TextStyle(color: AppColors.textSecondary)),
+                  const Text('Already have an account?', style: TextStyle(color: AppColors.textSecondary)),
                   TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SignupScreen()),
-                      );
-                    },
-                    child: const Text('Sign Up', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Login', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
